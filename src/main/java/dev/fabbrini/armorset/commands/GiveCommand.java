@@ -10,18 +10,23 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-/** /armorset give <player> <piece> - the sole way to obtain a legendary armor piece. */
+/** /armorset give <player> <piece|all> - the sole way to obtain a legendary armor piece. */
 public final class GiveCommand implements CommandExecutor, TabCompleter {
 
+    private final Plugin plugin;
     private final ArmorItems armorItems;
 
-    public GiveCommand(ArmorItems armorItems) {
+    public GiveCommand(Plugin plugin, ArmorItems armorItems) {
+        this.plugin = plugin;
         this.armorItems = armorItems;
     }
 
@@ -43,18 +48,39 @@ public final class GiveCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (args[2].equalsIgnoreCase("all")) {
+            List<ItemStack> items = Arrays.stream(ArmorPiece.values()).map(armorItems::build).toList();
+            giveItems(target, items);
+            sender.sendMessage(Component.text(
+                    "Gave " + target.getName() + " the full legendary armor set.", NamedTextColor.GREEN));
+            return true;
+        }
+
         ArmorPiece piece = ArmorPiece.fromId(args[2]);
         if (piece == null) {
             sender.sendMessage(Component.text(
-                    "Unknown piece: " + args[2] + ". Expected one of: infernal_crown, ghost_of_sparta, suit_of_lies, boots_of_dead_souls",
+                    "Unknown piece: " + args[2] + ". Expected one of: infernal_crown, ghost_of_sparta, suit_of_lies, boots_of_dead_souls, all",
                     NamedTextColor.RED));
             return true;
         }
 
-        target.getInventory().addItem(armorItems.build(piece));
+        giveItems(target, List.of(armorItems.build(piece)));
         sender.sendMessage(Component.text(
                 "Gave " + target.getName() + " a " + pieceLabel(piece) + ".", NamedTextColor.GREEN));
         return true;
+    }
+
+    /**
+     * target may be owned by a different region thread than whoever ran this command
+     * (console, or a player far away), so the inventory mutation must run on target's
+     * own thread rather than the command-execution thread.
+     */
+    private void giveItems(Player target, List<ItemStack> items) {
+        target.getScheduler().run(plugin, task -> {
+            for (ItemStack item : items) {
+                target.getInventory().addItem(item);
+            }
+        }, () -> {});
     }
 
     @Override
@@ -69,7 +95,8 @@ public final class GiveCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3) {
             List<String> ids = Arrays.stream(ArmorPiece.values())
                     .map(piece -> piece.name().toLowerCase(Locale.ROOT))
-                    .toList();
+                    .collect(Collectors.toCollection(ArrayList::new));
+            ids.add("all");
             return filterStartsWith(ids, args[2]);
         }
         return List.of();

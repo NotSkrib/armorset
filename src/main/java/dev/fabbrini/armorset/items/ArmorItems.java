@@ -42,11 +42,24 @@ public final class ArmorItems {
     }
 
     public boolean isWearing(Player player, ArmorPiece piece) {
-        ItemStack equipped = equippedItem(player, piece.slot());
-        if (equipped == null || !equipped.hasItemMeta()) {
+        return hasTag(equippedItem(player, piece.slot()), piece);
+    }
+
+    /** Identifies which legendary piece (if any) the given item stack is, regardless of slot. */
+    public ArmorPiece identify(ItemStack item) {
+        for (ArmorPiece piece : ArmorPiece.values()) {
+            if (hasTag(item, piece)) {
+                return piece;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasTag(ItemStack item, ArmorPiece piece) {
+        if (item == null || !item.hasItemMeta()) {
             return false;
         }
-        Boolean tag = equipped.getItemMeta().getPersistentDataContainer()
+        Boolean tag = item.getItemMeta().getPersistentDataContainer()
                 .get(piece.key(keys), PersistentDataType.BOOLEAN);
         return Boolean.TRUE.equals(tag);
     }

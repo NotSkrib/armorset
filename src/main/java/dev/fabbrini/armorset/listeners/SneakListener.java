@@ -82,7 +82,9 @@ public final class SneakListener implements Listener {
         vanished.add(id);
         for (Player other : Bukkit.getOnlinePlayers()) {
             if (!other.equals(player)) {
-                other.hidePlayer(plugin, player);
+                // other may be owned by a different region thread than this task, so the
+                // visibility change must run on other's own thread rather than this one.
+                other.getScheduler().run(plugin, t -> other.hidePlayer(plugin, player), () -> {});
             }
         }
 
@@ -104,7 +106,7 @@ public final class SneakListener implements Listener {
         restoreTasks.remove(id);
         for (Player other : Bukkit.getOnlinePlayers()) {
             if (!other.equals(player)) {
-                other.showPlayer(plugin, player);
+                other.getScheduler().run(plugin, t -> other.showPlayer(plugin, player), () -> {});
             }
         }
     }

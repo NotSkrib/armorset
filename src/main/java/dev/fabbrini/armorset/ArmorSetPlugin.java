@@ -10,6 +10,7 @@ import dev.fabbrini.armorset.items.ArmorItems;
 import dev.fabbrini.armorset.items.ArmorPiece;
 import dev.fabbrini.armorset.listeners.CombatListener;
 import dev.fabbrini.armorset.listeners.FallDamageListener;
+import dev.fabbrini.armorset.listeners.PickupAnnounceListener;
 import dev.fabbrini.armorset.listeners.SneakListener;
 import dev.fabbrini.armorset.tracking.EquipmentTracker;
 import org.bukkit.command.PluginCommand;
@@ -40,8 +41,9 @@ public final class ArmorSetPlugin extends JavaPlugin {
         pluginManager.registerEvents(new CombatListener(armorItems), this);
         pluginManager.registerEvents(new FallDamageListener(armorItems), this);
         pluginManager.registerEvents(new SneakListener(this, armorItems), this);
+        pluginManager.registerEvents(new PickupAnnounceListener(armorItems), this);
 
-        GiveCommand giveCommand = new GiveCommand(armorItems);
+        GiveCommand giveCommand = new GiveCommand(this, armorItems);
         PluginCommand armorSetCommand = getCommand("armorset");
         armorSetCommand.setExecutor(giveCommand);
         armorSetCommand.setTabCompleter(giveCommand);

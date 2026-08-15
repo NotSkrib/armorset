@@ -11,10 +11,13 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -37,6 +40,7 @@ public final class EquipmentTracker implements Listener {
 
     private final Map<UUID, EnumSet<ArmorPiece>> worn = new ConcurrentHashMap<>();
     private final Map<UUID, ScheduledTask> scanTasks = new ConcurrentHashMap<>();
+    private final Set<UUID> glowing = ConcurrentHashMap.newKeySet();
 
     public EquipmentTracker(Plugin plugin, ArmorItems armorItems, Map<ArmorPiece, ArmorAbilityModule> modules) {
         this.plugin = plugin;
@@ -74,6 +78,7 @@ public final class EquipmentTracker implements Listener {
                 modules.get(piece).onUnequip(player);
             }
         }
+        glowing.remove(id);
     }
 
     private void forgetTasks(UUID id) {
@@ -112,6 +117,20 @@ public final class EquipmentTracker implements Listener {
                 current.remove(piece);
                 modules.get(piece).onUnequip(player);
             }
+        }
+
+        updateGlow(player, id, !current.isEmpty());
+    }
+
+    private void updateGlow(Player player, UUID id, boolean shouldGlow) {
+        boolean isGlowing = glowing.contains(id);
+        if (shouldGlow && !isGlowing) {
+            glowing.add(id);
+            player.addPotionEffect(new PotionEffect(
+                    PotionEffectType.GLOWING, PotionEffect.INFINITE_DURATION, 0, true, false, false));
+        } else if (!shouldGlow && isGlowing) {
+            glowing.remove(id);
+            player.removePotionEffect(PotionEffectType.GLOWING);
         }
     }
 }
