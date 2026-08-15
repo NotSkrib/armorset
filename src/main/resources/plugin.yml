@@ -1,0 +1,17 @@
+name: ArmorSet
+version: '${project.version}'
+main: dev.fabbrini.armorset.ArmorSetPlugin
+api-version: '1.21'
+folia-supported: true
+author: fabbrini
+description: Four legendary Netherite armor pieces with unique abilities.
+
+commands:
+  armorset:
+    description: Manage legendary armor pieces.
+    usage: /armorset give <player> <piece>
+
+permissions:
+  armorset.give:
+    description: Allows giving legendary armor pieces to players.
+    default: op
