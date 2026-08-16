@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -108,26 +109,57 @@ public final class ArmorSetCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        List<Component> holders = new ArrayList<>();
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (armorItems.isWearing(player, piece)) {
-                holders.add(Component.text(player.getName() + " (wearing)", NamedTextColor.YELLOW));
-            } else if (armorItems.carries(player, piece)) {
-                holders.add(Component.text(player.getName() + " (in inventory)", NamedTextColor.GRAY));
-            }
-        }
-
-        if (holders.isEmpty()) {
+        List<Player> online = List.copyOf(Bukkit.getOnlinePlayers());
+        if (online.isEmpty()) {
             sender.sendMessage(Component.text(
                     "No online player currently has the " + pieceLabel(piece) + ".", NamedTextColor.YELLOW));
             return true;
+        }
+
+        checkHolders(sender, piece, online);
+        return true;
+    }
+
+    /**
+     * Each player's inventory is only safe to read from that player's own region thread
+     * (same reasoning as giveItems below), so this fans the check out across every
+     * online player's entity scheduler and reports once they've all responded, rather
+     * than reading their inventories from the command-execution thread directly.
+     */
+    private void checkHolders(CommandSender sender, ArmorPiece piece, List<Player> online) {
+        List<Component> holders = new ArrayList<>();
+        AtomicInteger remaining = new AtomicInteger(online.size());
+
+        for (Player player : online) {
+            Runnable onDone = () -> {
+                if (remaining.decrementAndGet() == 0) {
+                    reportHolders(sender, piece, holders);
+                }
+            };
+            player.getScheduler().run(plugin, task -> {
+                synchronized (holders) {
+                    if (armorItems.isWearing(player, piece)) {
+                        holders.add(Component.text(player.getName() + " (wearing)", NamedTextColor.YELLOW));
+                    } else if (armorItems.carries(player, piece)) {
+                        holders.add(Component.text(player.getName() + " (in inventory)", NamedTextColor.GRAY));
+                    }
+                }
+                onDone.run();
+            }, onDone);
+        }
+    }
+
+    private void reportHolders(CommandSender sender, ArmorPiece piece, List<Component> holders) {
+        if (holders.isEmpty()) {
+            sender.sendMessage(Component.text(
+                    "No online player currently has the " + pieceLabel(piece) + ".", NamedTextColor.YELLOW));
+            return;
         }
 
         sender.sendMessage(Component.text("Holders of the " + pieceLabel(piece) + ":", NamedTextColor.GOLD));
         for (Component holder : holders) {
             sender.sendMessage(Component.text("- ").append(holder));
         }
-        return true;
     }
 
     private void sendUsage(CommandSender sender) {

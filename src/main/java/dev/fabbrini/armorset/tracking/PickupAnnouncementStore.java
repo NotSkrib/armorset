@@ -1,12 +1,14 @@
 package dev.fabbrini.armorset.tracking;
 
 import dev.fabbrini.armorset.items.ArmorPiece;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 
@@ -40,18 +42,27 @@ public final class PickupAnnouncementStore {
         }
     }
 
-    /** Returns true the first time this is called for a piece, false on every call after. */
-    public synchronized boolean markAnnounced(ArmorPiece piece) {
-        if (!announced.add(piece)) {
-            return false;
+    /**
+     * Returns true the first time this is called for a piece, false on every call after.
+     * Called from whichever region thread the pickup happens on, so the in-memory update
+     * is synchronized; the disk write itself is dispatched off that thread so a pickup on
+     * a busy region never blocks its tick on file IO.
+     */
+    public boolean markAnnounced(ArmorPiece piece) {
+        List<ArmorPiece> snapshot;
+        synchronized (this) {
+            if (!announced.add(piece)) {
+                return false;
+            }
+            snapshot = List.copyOf(announced);
         }
-        save();
+        Bukkit.getAsyncScheduler().runNow(plugin, task -> save(snapshot));
         return true;
     }
 
-    private void save() {
+    private void save(List<ArmorPiece> snapshot) {
         YamlConfiguration config = new YamlConfiguration();
-        config.set("announced", announced.stream().map(Enum::name).toList());
+        config.set("announced", snapshot.stream().map(Enum::name).toList());
         try {
             plugin.getDataFolder().mkdirs();
             config.save(file);
