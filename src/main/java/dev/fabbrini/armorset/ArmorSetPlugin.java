@@ -5,14 +5,16 @@ import dev.fabbrini.armorset.abilities.BootsOfDeadSoulsAbilities;
 import dev.fabbrini.armorset.abilities.GhostOfSpartaAbilities;
 import dev.fabbrini.armorset.abilities.InfernalCrownAbilities;
 import dev.fabbrini.armorset.abilities.SuitOfLiesAbilities;
-import dev.fabbrini.armorset.commands.GiveCommand;
+import dev.fabbrini.armorset.commands.ArmorSetCommand;
 import dev.fabbrini.armorset.items.ArmorItems;
 import dev.fabbrini.armorset.items.ArmorPiece;
 import dev.fabbrini.armorset.listeners.CombatListener;
 import dev.fabbrini.armorset.listeners.FallDamageListener;
+import dev.fabbrini.armorset.listeners.ItemProtectionListener;
 import dev.fabbrini.armorset.listeners.PickupAnnounceListener;
 import dev.fabbrini.armorset.listeners.SneakListener;
 import dev.fabbrini.armorset.tracking.EquipmentTracker;
+import dev.fabbrini.armorset.tracking.PickupAnnouncementStore;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
@@ -35,18 +37,20 @@ public final class ArmorSetPlugin extends JavaPlugin {
         modules.put(ArmorPiece.BOOTS_OF_DEAD_SOULS, new BootsOfDeadSoulsAbilities(this, armorItems));
 
         EquipmentTracker equipmentTracker = new EquipmentTracker(this, armorItems, modules);
+        PickupAnnouncementStore announcementStore = new PickupAnnouncementStore(this);
 
         PluginManager pluginManager = getServer().getPluginManager();
         pluginManager.registerEvents(equipmentTracker, this);
         pluginManager.registerEvents(new CombatListener(armorItems), this);
         pluginManager.registerEvents(new FallDamageListener(armorItems), this);
         pluginManager.registerEvents(new SneakListener(this, armorItems), this);
-        pluginManager.registerEvents(new PickupAnnounceListener(armorItems), this);
+        pluginManager.registerEvents(new PickupAnnounceListener(armorItems, announcementStore), this);
+        pluginManager.registerEvents(new ItemProtectionListener(armorItems), this);
 
-        GiveCommand giveCommand = new GiveCommand(this, armorItems);
+        ArmorSetCommand armorSetCommandExecutor = new ArmorSetCommand(this, armorItems);
         PluginCommand armorSetCommand = getCommand("armorset");
-        armorSetCommand.setExecutor(giveCommand);
-        armorSetCommand.setTabCompleter(giveCommand);
+        armorSetCommand.setExecutor(armorSetCommandExecutor);
+        armorSetCommand.setTabCompleter(armorSetCommandExecutor);
 
         for (Player player : getServer().getOnlinePlayers()) {
             equipmentTracker.startTracking(player);

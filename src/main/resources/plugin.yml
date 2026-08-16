@@ -9,9 +9,12 @@ description: Four legendary Netherite armor pieces with unique abilities.
 commands:
   armorset:
     description: Manage legendary armor pieces.
-    usage: /armorset give <player> <piece>
+    usage: /armorset <give|holders> ...
 
 permissions:
   armorset.give:
     description: Allows giving legendary armor pieces to players.
     default: op
+  armorset.holders:
+    description: Allows checking which online players currently have a legendary armor piece.
+    default: true

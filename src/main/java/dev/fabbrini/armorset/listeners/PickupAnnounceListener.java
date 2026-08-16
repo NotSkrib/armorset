@@ -2,6 +2,7 @@ package dev.fabbrini.armorset.listeners;
 
 import dev.fabbrini.armorset.items.ArmorItems;
 import dev.fabbrini.armorset.items.ArmorPiece;
+import dev.fabbrini.armorset.tracking.PickupAnnouncementStore;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
@@ -13,16 +14,22 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 
 import java.time.Duration;
 
-/** Broadcasts a server-wide on-screen title when a player picks a legendary piece up off the ground. */
+/**
+ * Broadcasts a server-wide on-screen title the first time a legendary piece is picked
+ * up off the ground - subsequent pickups of that same piece (it dropping on death,
+ * changing hands, etc.) stay silent.
+ */
 public final class PickupAnnounceListener implements Listener {
 
     private static final Title.Times TIMES =
             Title.Times.times(Duration.ofMillis(500), Duration.ofSeconds(3), Duration.ofMillis(500));
 
     private final ArmorItems armorItems;
+    private final PickupAnnouncementStore announcementStore;
 
-    public PickupAnnounceListener(ArmorItems armorItems) {
+    public PickupAnnounceListener(ArmorItems armorItems, PickupAnnouncementStore announcementStore) {
         this.armorItems = armorItems;
+        this.announcementStore = announcementStore;
     }
 
     @EventHandler
@@ -32,6 +39,9 @@ public final class PickupAnnounceListener implements Listener {
         }
         ArmorPiece piece = armorItems.identify(event.getItem().getItemStack());
         if (piece == null) {
+            return;
+        }
+        if (!announcementStore.markAnnounced(piece)) {
             return;
         }
 

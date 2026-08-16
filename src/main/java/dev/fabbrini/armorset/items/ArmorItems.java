@@ -45,6 +45,21 @@ public final class ArmorItems {
         return hasTag(equippedItem(player, piece.slot()), piece);
     }
 
+    /** True if the player has this piece anywhere on them - worn, in their inventory, or in hand. */
+    public boolean carries(Player player, ArmorPiece piece) {
+        for (ItemStack item : player.getInventory().getStorageContents()) {
+            if (identify(item) == piece) {
+                return true;
+            }
+        }
+        for (ItemStack item : player.getInventory().getArmorContents()) {
+            if (identify(item) == piece) {
+                return true;
+            }
+        }
+        return identify(player.getInventory().getItemInOffHand()) == piece;
+    }
+
     /** Identifies which legendary piece (if any) the given item stack is, regardless of slot. */
     public ArmorPiece identify(ItemStack item) {
         for (ArmorPiece piece : ArmorPiece.values()) {
